@@ -1,3 +1,5 @@
+# ssh to a device list and execute a list of commands
+
 import sys
 from sys import argv
 from netmiko import ConnectHandler
