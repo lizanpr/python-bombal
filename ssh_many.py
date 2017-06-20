@@ -1,6 +1,8 @@
-# ssh to a device list and execute a list of commands
-
+import re
 import sys
+import time
+import select
+import paramiko
 from sys import argv
 from netmiko import ConnectHandler
 
@@ -15,11 +17,34 @@ with open(commands_file) as f:
 username = raw_input("Enter your username: ")
 password = raw_input("Enter your password: ")
 
-ios_device = {
-    'device_type': 'cisco_ios',
-    'ip': devices[0],
-    'username': username,
-    'password': password,
-}
+for device in devices:
 
-print ios_device
+    print 'Configuring device ' + device
+
+    fd = open('C:\config-' + device + '.txt','w')
+    # Capture standard output to hidden system output (my interpretation)
+    old_stdout = sys.stdout
+    # Redirect system output to the file object
+    sys.stdout = fd
+
+    ios_device = {
+        'device_type': 'cisco_ios',
+        'ip': device,
+        'username': username,
+        'password': password,
+    }
+
+    net_connect = ConnectHandler(**ios_device)
+
+    # Loop for sending comands from a list without entering config mode
+    # for command in commands:
+    #     output = net_connect.send_command(command)
+    #     print output
+
+    # send_config_set enters and exits config mode automatically
+    output = net_connect.send_config_set(commands)
+    print output
+
+    fd.close()
+    # Return system output to visible standard output
+    sys.stdout = old_stdout
