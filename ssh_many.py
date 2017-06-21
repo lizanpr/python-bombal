@@ -1,8 +1,4 @@
-import re
 import sys
-import time
-import select
-import paramiko
 from sys import argv
 from netmiko import ConnectHandler
 
