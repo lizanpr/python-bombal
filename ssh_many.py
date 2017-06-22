@@ -1,6 +1,10 @@
+import os
 import sys
 from sys import argv
 from netmiko import ConnectHandler
+from netmiko.ssh_exception import NetMikoTimeoutException
+from netmiko.ssh_exception import NetMikoAuthenticationException
+from paramiko.ssh_exception import SSHException
 
 script, devices_file, commands_file = argv
 
@@ -13,15 +17,14 @@ with open(commands_file) as f:
 username = raw_input("Enter your username: ")
 password = raw_input("Enter your password: ")
 
+if os.path.exists("C:\connection_failure.txt"):
+    os.remove('C:\connection_failure.txt')
+else:
+    pass
+
 for device in devices:
 
-    print 'Configuring device ' + device
-
-    fd = open('C:\config-' + device + '.txt','w')
-    # Capture standard output to hidden system output (my interpretation)
-    old_stdout = sys.stdout
-    # Redirect system output to the file object
-    sys.stdout = fd
+    print 'Trying device ' + device + "..."
 
     ios_device = {
         'device_type': 'cisco_ios',
@@ -30,17 +33,29 @@ for device in devices:
         'password': password,
     }
 
-    net_connect = ConnectHandler(**ios_device)
+    try:
+        net_connect = ConnectHandler(**ios_device)
 
-    # Loop for sending comands from a list without entering config mode
-    # for command in commands:
-    #     output = net_connect.send_command(command)
-    #     print output
+    except (SSHException, NetMikoTimeoutException, NetMikoAuthenticationException):
+        print "Cannot connect to device " + device
+        fail = open('C:\connection_failure.txt', 'a')
+        fail.write("Cannot connect to device " + device + '\n')
+        fail.close()
 
-    # send_config_set enters and exits config mode automatically
-    output = net_connect.send_config_set(commands)
-    print output
+    else:
+        fd = open('C:\config-' + device + '.txt','w')
+        # Make a copy of current sys.stdout (?)
+        old_stdout = sys.stdout
+        # Redirect system output to the file object
+        sys.stdout = fd
 
-    fd.close()
-    # Return system output to visible standard output
-    sys.stdout = old_stdout
+        # send_config_set enters and exits config mode automatically. Use 'do'
+        # to execute exec-mode commands such as show
+        output = net_connect.send_config_set(commands)
+        print output
+
+        fd.close()
+        # Restore sys.stdout with the backup
+        sys.stdout = old_stdout
+
+print "The script has completed."
